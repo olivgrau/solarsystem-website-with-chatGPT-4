@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unser Sonnensystem</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            background-color: #000;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .planet {
+            position: absolute;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        // Daten für die Planeten
+        const planetData = [
+            { name: "Sonne", radius: 50, color: "#f9b233", type: "Stern", mass: "1.989 × 10^30 kg", diameter: "1.391.000 km" },
+            { name: "Merkur", radius: 4, color: "#8c8c8c", orbitRadius: 58, orbitDuration: 88, type: "Gesteinsplanet", mass: "3.301 × 10^23 kg", diameter: "4.880 km" },
+            { name: "Venus", radius: 12, color: "#e3ca7f", orbitRadius: 108, orbitDuration: 225, type: "Gesteinsplanet", mass: "4.867 × 10^24 kg", diameter: "12.104 km" },
+            { name: "Erde", radius: 12, color: "#0f7ea1", orbitRadius: 150, orbitDuration: 365, type: "Gesteinsplanet", mass: "5.972 × 10^24 kg", diameter: "12.742 km" },
+            { name: "Mars", radius: 8, color: "#c62a1f", orbitRadius: 228, orbitDuration: 687, type: "Gesteinsplanet", mass: "6.417 × 10^23 kg", diameter: "6.779 km" },
+            { name: "Jupiter", radius: 30, color: "#bfa07a", orbitRadius: 778, orbitDuration: 4300, type: "Gasplanet", mass: "1.898 × 10^27 kg", diameter: "139.822 km" },
+            { name: "Saturn", radius: 24, color: "#ccb793", orbitRadius: 1429, orbitDuration: 10750, type: "Gasplanet", mass: "5.683 × 10^26 kg", diameter: "116.460 km" },
+            { name: "Uranus", radius: 20, color: "#80a1b5", orbitRadius: 2871, orbitDuration: 30600, type: "Eisplanet", mass: "8.681 × 10^25 kg", diameter: "50.724 km" },
+            { name: "Neptun", radius: 18, color: "#253668", orbitRadius: 4498, orbitDuration: 60225, type: "Eisplanet", mass: "1.024 × 10^26 kg", diameter: "49.244 km" },
+        ];
+
+
+        // Bildschirmgröße anpassen
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Skalierungsfunktion für Planetengröße und Orbitabstand
+        const scale = d3.scaleLinear().domain([0, 4500]).range([0, Math.min(width, height) / 2 - 60]);
+
+        // SVG-Element erstellen
+        const svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
+
+        // Popup-Element erstellen
+        const popup = d3.select("body").append("div")
+            .style("position", "absolute")
+            .style("background-color", "rgba(255, 255, 255, 0.8)")
+            .style("padding", "5px")
+            .style("border-radius", "5px")
+            .style("display", "none")
+            .style("pointer-events", "none");
+
+
+        // Gruppencontainer erstellen und zentrieren
+        const container = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
+
+        // Funktion zum Anzeigen des Popups
+        function showPopup(planet) {
+            popup.style("display", "block");
+            const info = `
+                <strong>${planet.name}</strong><br>
+                Typ: ${planet.type}<br>
+                Masse: ${planet.mass}<br>
+                Durchmesser: ${planet.diameter}
+                `;
+            popup.html(info);
+        }
+
+        // Funktion zum Ausblenden des Popups
+        function hidePopup() {
+            popup.style("display", "none");
+        }
+
+
+        // Planeten und Umlaufbahnen erstellen
+        planetData.forEach((planet) => {
+            // Umlaufbahn-Pfad erstellen
+            const orbitPath = d3.path();
+            orbitPath.arc(0, 0, scale(planet.orbitRadius || 0), 0, 2 * Math.PI);
+
+            // Umlaufbahn-Linie hinzufügen
+            const orbitLine = container.append("path")
+                .attr("d", orbitPath.toString())
+                .attr("fill", "none")
+                .attr("stroke", "rgba(255, 255, 255, 0.8)"); // Erhöhen Sie die Deckkraft, um die Orbitlinien sichtbar
+            // Erstellen der Gruppe für jeden Planeten
+            const planetGroup = container.append("g");
+
+            const planetCircle = planetGroup.append("circle")
+                .attr("r", scale(planet.radius))
+                .attr("fill", planet.color)
+                .attr("cx", scale(planet.orbitRadius || 0));
+
+            // Füge 'mouseover'- und 'mouseout'-Ereignis-Listener zu Planetenkreisen hinzu
+            planetCircle
+                .on("mouseover", function (event) {
+                    showPopup(planet);
+                    popup.style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px");
+                })
+                .on("mouseout", hidePopup);
+
+            // Planetennamen hinzufügen
+            const planetText = planetGroup.append("text")
+                .attr("x", scale(planet.orbitRadius || 0))
+                .attr("y", -scale(planet.radius) - 10)
+                .attr("fill", "#FFF")
+                .attr("font-size", "10px")
+                .attr("text-anchor", "middle")
+                .text(planet.name);
+
+
+            // Planetengruppe für spätere Verwendung speichern
+            planet.planetGroup = planetGroup;
+
+        });
+
+        // Statusinformationen-Container erstellen
+        const statusDiv = d3.select("body").append("div")
+            .style("position", "fixed")
+            .style("top", "10px")
+            .style("right", "10px")
+            .style("color", "#FFF");
+
+
+
+
+        // Animationsfunktion
+        function animate(time) {
+            // Statusinformationen initialisieren
+            let statusInfo = "";
+
+            // Für jeden Planeten
+            planetData.forEach((planet) => {
+                // Überspringen, wenn die Umlaufdauer nicht festgelegt ist (z. B. für die Sonne)
+                if (!planet.orbitDuration) return;
+
+                // Winkel berechnen
+                const angle = (time / (planet.orbitDuration * 10)) % (2 * Math.PI);
+                // Position (x, y) in Relation zur Sonne berechnen
+                const x = Math.cos(angle) * scale(planet.orbitRadius || 0);
+                const y = Math.sin(angle) * scale(planet.orbitRadius || 0);
+                // Planetengruppe auf die neue Position verschieben
+                planet.planetGroup.attr("transform", `translate(${x},${y})`);
+
+                // Statusinformationen aktualisieren
+                statusInfo += `<span style="color: ${planet.color}">${planet.name}:</span> x: ${x.toFixed(2)}, y: ${y.toFixed(2)}<br>`;
+
+            });
+
+            // Nächste Animationsschleife anfordern
+            requestAnimationFrame(animate);
+            // Statusinformationen im Container anzeigen
+            statusDiv.html(statusInfo);
+        }
+
+        // Animation starten
+        animate(0);
+    </script>
+</body>
+
+</html>
