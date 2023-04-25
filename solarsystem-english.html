@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Solar System</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            background-color: #000;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .planet {
+            position: absolute;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        // Data for the planets
+        const planetData = [
+            { name: "Sun", radius: 50, color: "#f9b233", type: "Star", mass: "1.989 × 10^30 kg", diameter: "1,391,000 km" },
+            { name: "Mercury", radius: 4, color: "#8c8c8c", orbitRadius: 58, orbitDuration: 88, type: "Terrestrial planet", mass: "3.301 × 10^23 kg", diameter: "4,880 km" },
+            { name: "Venus", radius: 12, color: "#e3ca7f", orbitRadius: 108, orbitDuration: 225, type: "Terrestrial planet", mass: "4.867 × 10^24 kg", diameter: "12,104 km" },
+            { name: "Earth", radius: 12, color: "#0f7ea1", orbitRadius: 150, orbitDuration: 365, type: "Terrestrial planet", mass: "5.972 × 10^24 kg", diameter: "12,742 km" },
+            { name: "Mars", radius: 8, color: "#c62a1f", orbitRadius: 228, orbitDuration: 687, type: "Terrestrial planet", mass: "6.417 × 10^23 kg", diameter: "6,779 km" },
+            { name: "Jupiter", radius: 30, color: "#bfa07a", orbitRadius: 778, orbitDuration: 4300, type: "Gas giant", mass: "1.898 × 10^27 kg", diameter: "139,822 km" },
+            { name: "Saturn", radius: 24, color: "#ccb793", orbitRadius: 1429, orbitDuration: 10750, type: "Gas giant", mass: "5.683 × 10^26 kg", diameter: "116,460 km" },
+            { name: "Uranus", radius: 20, color: "#80a1b5", orbitRadius: 2871, orbitDuration: 30600, type: "Ice giant", mass: "8.681 × 10^25 kg", diameter: "50,724 km" },
+            { name: "Neptune", radius: 18, color: "#253668", orbitRadius: 4498, orbitDuration: 60225, type: "Ice giant", mass: "1.024 × 10^26 kg", diameter: "49,244 km" },
+        ];
+
+        // Adjust screen size
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Scaling function for planet size and orbit distance
+        const scale = d3.scaleLinear().domain([0, 4500]).range([0, Math.min(width,height) / 2 - 60]);
+
+// Create SVG element
+const svg = d3.select("body").append("svg").attr("width", width).attr("height", height);
+
+// Create popup element
+const popup = d3.select("body").append("div")
+    .style("position", "absolute")
+    .style("background-color", "rgba(255, 255, 255, 0.8)")
+    .style("padding", "5px")
+    .style("border-radius", "5px")
+    .style("display", "none")
+    .style("pointer-events", "none");
+
+// Create and center group container
+const container = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
+
+// Function to show the popup
+function showPopup(planet) {
+    popup.style("display", "block");
+    const info = `
+        <strong>${planet.name}</strong><br>
+        Type: ${planet.type}<br>
+        Mass: ${planet.mass}<br>
+        Diameter: ${planet.diameter}
+        `;
+    popup.html(info);
+}
+
+// Function to hide the popup
+function hidePopup() {
+    popup.style("display", "none");
+}
+
+// Create planets and orbits
+planetData.forEach((planet) => {
+    // Create orbit path
+    const orbitPath = d3.path();
+    orbitPath.arc(0, 0, scale(planet.orbitRadius || 0), 0, 2 * Math.PI);
+
+    // Add orbit line
+    const orbitLine = container.append("path")
+        .attr("d", orbitPath.toString())
+        .attr("fill", "none")
+        .attr("stroke", "rgba(255, 255, 255, 0.8)"); // Increase opacity to make orbit lines visible
+    // Create group for each planet
+    const planetGroup = container.append("g");
+
+    const planetCircle = planetGroup.append("circle")
+        .attr("r", scale(planet.radius))
+        .attr("fill", planet.color)
+        .attr("cx", scale(planet.orbitRadius || 0));
+
+    // Add 'mouseover' and 'mouseout' event listeners to planet circles
+    planetCircle
+        .on("mouseover", function (event) {
+            showPopup(planet);
+            popup.style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mouseout", hidePopup);
+
+    // Add planet names
+    const planetText = planetGroup.append("text")
+        .attr("x", scale(planet.orbitRadius || 0))
+        .attr("y", -scale(planet.radius) - 10)
+        .attr("fill", "#FFF")
+        .attr("font-size", "10px")
+        .attr("text-anchor", "middle")
+        .text(planet.name);
+
+    // Save planet group for later use
+    planet.planetGroup = planetGroup;
+
+});
+
+// Create status information container
+const statusDiv = d3.select("body").append("div")
+    .style("position", "fixed")
+    .style("top", "10px")
+    .style("right", "10px")
+    .style("color", "#FFF");
+
+// Animation function
+function animate(time) {
+    // Initialize status information
+    let statusInfo = "";
+
+    // For each planet
+    planetData.forEach((planet) => {
+        
+                // Skip if the orbit duration is not set (e.g., for the Sun)
+                if (!planet.orbitDuration) return;
+
+                // Calculate angle
+                const angle = (time / (planet.orbitDuration * 10)) % (2 * Math.PI);
+                // Calculate position (x, y) relative to the Sun
+                const x = Math.cos(angle) * scale(planet.orbitRadius || 0);
+                const y = Math.sin(angle) * scale(planet.orbitRadius || 0);
+                // Move planet group to the new position
+                planet.planetGroup.attr("transform", `translate(${x},${y})`);
+
+                // Update status information
+                statusInfo += `<span style="color: ${planet.color}">${planet.name}:</span> x: ${x.toFixed(2)}, y: ${y.toFixed(2)}<br>`;
+
+            });
+
+            // Request next animation loop
+            requestAnimationFrame(animate);
+            // Display status information in the container
+            statusDiv.html(statusInfo);
+        }
+
+        // Start animation
+        animate(0);
+    </script>
+</body>
+
+</html>
+
